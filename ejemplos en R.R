@@ -8,7 +8,7 @@ rt
 rt$rho
 rt$tau
 chisq.test(matrix(c(1562,42,383,94),2,2))
-
+qnorm((778-272)/(2*1050)+0.5)
 
 
 rt <- tetrachoric(matrix(c(1766,842,842,722),2,2))  #ilustración 3 de Pearson
