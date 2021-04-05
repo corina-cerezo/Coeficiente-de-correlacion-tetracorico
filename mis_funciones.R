@@ -54,11 +54,11 @@ superficie3d(x.from = 0,x.to = 1,y.from = 0,y.to = 1,
              fxy = fxy,x.lab = "eje x",y.lab = "eje y", z.lab = "eje z",
              main = "Gráfico",leyenda = FALSE)
 # Ejemplo 2
-N=20
-s1=3
-s2=1.5
-r=0.4
+N <- 1000
+s1 <- 5
+s2 <- 5
+r <- 0.05
 fxy <- function(x,y){5/(2*pi*sqrt(1-r^2)*s1*s2)*exp((-1/2)*(1/(1-r^2))*((x/s1)^2+(y/s2)^2-2*r*x*y/(s1*s2)))}
-superficie3d(x.from = -3,x.to = 3,y.from = -3,y.to = 3,
+superficie3d(x.from = -10,x.to = 10,y.from = -10,y.to = 10,
              fxy = fxy,x.lab = "",y.lab = "", z.lab = "",
              main = "Gráfico",sombra = TRUE)
