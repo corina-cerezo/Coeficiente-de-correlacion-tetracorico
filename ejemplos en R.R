@@ -1,6 +1,7 @@
 library(psych)
 library(pbivnorm)
 library(rootSolve)
+library(polynom)
 
 
 
@@ -46,18 +47,27 @@ rhot <- function(a,b,c,d){
   peh <- qnorm(3/4)/(H*sqrt(N))*sqrt((b+d)*(a+c)/(N^2))
   pek <- qnorm(3/4)/(K*sqrt(N))*sqrt((c+d)*(a+b)/(N^2))
   eps = (a*d-b*c)/(N*N*H*K)
-  coef1 = 1
-  coef2 = h*k/factorial(2)
-  coef3 = (h^2-1)*(k^2-1)/factorial(3)
-  coef4 = h*(h^2-3)*k*(k^2-3)/factorial(4)
-  coef5 = (h^4-6*h^2+3)*(k^4-6*k^2+3)/factorial(5)
-  coef6 = h*(h^4-10*h^2+15)*k*(k^4-10*k^2+15)/factorial(6)
-  coef7 = (h^6-15*h^4+45*h^2-15)*(k^6-15*k^4+45*k^2-15)/factorial(7)
-  coef8 = h*(h^6-21*h^4+105*h^2-105)*k*(k^6-21*k^4+105*k^2-105)/factorial(8)
-  serie1 <- function(x){
-    return(-1*eps+coef1*x+coef2*x^2+coef3*x^3+coef4*x^4+coef5*x^5+coef6*x^6+coef7*x^7+coef8*x^8)
+  v <- vector()
+  w <- vector()
+  coef <- vector()
+  v0 = 1
+  w0 = 1
+  v[1] = h
+  w[1] = k
+  v[2] = h*v[1] - 1
+  w[2] = k*w[1] - 1
+  coef[1] = -1*eps
+  coef[2] = v0*w0
+  coef[3] = v[1]*w[1]/factorial(2)
+  coef[4] = v[2]*w[2]/factorial(3)
+  for (i in 3:99) {
+    v[i] = h*v[i-1] - (i-1)*v[i-2]
+    w[i] = k*w[i-1] - (i-1)*w[i-2]
+    coef[i+2] = v[i]*w[i]/factorial(i+1)
   }
-  r1 <-  uniroot.all(serie1, c(-1,1))
+  r1 <-  polyroot(coef)
+  r1 <- Re(r1[which(abs(Im(r1))<1e-12)])
+  r1 <- r1[which(abs(r1)<1)]
   serie2 <- function(x){
     return(-1*eps+ x + h*k/2*x^2-(h^2+k^2-(h^2)*(k^2))/6*x^3 + h*k*((h^2)*(k^2)-3*(h^2+k^2)+5)/24*x^4)
   }
@@ -105,6 +115,10 @@ rhot <- function(a,b,c,d){
     return(list("La serie 1 obtiene:",r1,"La serie 2 obtiene:",r2))
   }
 }
+a=631
+b=125
+c=147
+d=147
 #Ilustración 1 de Pearson
 rhot(631,125,147,147) #mi función
 (tetrachoric(matrix(c(631,125,147,147),2,2)))  #función de la librería psych
@@ -119,7 +133,7 @@ rhot(1562,42,383,94)
 library(pracma)
 library(rmutil)
 
-frecuencias <- function(N,sigma1,sigma2,rhot,h,k){
+frecuencias <- function(N,sigma1,sigma2,p,h,k){
   z <- function(x,y){
     N/(2*pi*sigma1*sigma2*sqrt(1-rhot^2))*exp(-0.5*(1/(1-rhot^2))*((x/sigma1)^2+(y/sigma2)^2-2*rhot*x*y/(sigma1*sigma2)))
   }
@@ -135,20 +149,20 @@ frecuencias <- function(N,sigma1,sigma2,rhot,h,k){
   # c <- int2(z, a=c(-10000,k), b=c(h,10000))
   # d <- int2(z, a=c(h,k), b=c(10000,10000))
   #Aquí ocupé lo que debí haber hecho desde el principio
-  aux1 <- pbivnorm::pbivnorm(x=c(h/s1), y=c(k/s2), rho=p)
+  aux1 <- pbivnorm::pbivnorm(x=c(h/sigma1), y=c(k/sigma2), rho=p)
   a <- N*aux1
-  aux2 <- pbivnorm::pbivnorm(x=c(Inf), y=c(k/s2), rho=p)
+  aux2 <- pbivnorm::pbivnorm(x=c(Inf), y=c(k/sigma2), rho=p)
   b <- N*(aux2-aux1)
-  aux3 <- pbivnorm::pbivnorm(x=c(h/s1), y=c(Inf), rho=p)
-  c <- N*(aux3-aux1)
-  d <- N*(1-aux2-aux3+aux1)
+  aux3 <- pbivnorm::pbivnorm(x=c(-1*h/sigma1), y=c(-1*k/sigma2), rho=p)
+  d <- N*(aux3)
+  c <- N-(a+b+d)
   return(c(round(a),round(b),round(c),round(d)))
 }
 #Ejemplo 1
 N <- 1000
 s1 <- 5
 s2 <- 5
-p <- 0.4
+p <- 0.45
 h <- 4
 k <- 1
 ns <- frecuencias(N,s1,s2,p,h,k)
@@ -203,15 +217,15 @@ k <- 1
 ns <- frecuencias(N,s1,s2,p,h,k)
 ns
 sum(ns)
-rhot(ns[1],ns[2],ns[3],ns[4]) #Mi función
-(tetrachoric(matrix(c(ns[1],ns[2],ns[3],ns[4]),2,2))) #Función de la librería psych
+rhot(683,200,159,0) #Mi función
+(tetrachoric(matrix(c(683,200,159,0),2,2))) #Función de la librería psych
 
 #Ejemplo 5, OMG si corre si solo hay un cero (Como ya corregí frecuencias ya no hay ceros jo jo)
 N <- 1000
-s1 <- 5
-s2 <- 5
+s1 <- 1
+s2 <- 1
 p <- 0.49
-h <- 4
+h <- 1.5
 k <- 1
 ns <- frecuencias(N,s1,s2,p,h,k)
 ns
@@ -249,17 +263,88 @@ rt
 rt$rho
 rt$tau
 
-#Ejemplo 7 ejemplo loco
+#Ejemplo 7 (a=0)
 N <- 1000
 s1 <- 1
 s2 <- 1
-p <- -0.89
-h <- 0.1 #vs15
-k <- 0.3
+p <- -0.85
+h <- -1
+k <- -1
+(ns <- frecuencias(N,s1,s2,p,h,k))
+sum(ns)
+rhot(ns[1],ns[2],ns[3],ns[4]) #Mi función
+(tetrachoric(matrix(c(ns[1],ns[2],ns[3],ns[4]),2,2))) #Función de la librería psych
+chisq.test(matrix(c(ns[1],ns[2],ns[3],ns[4]),2,2))
+
+#Ejemplo 8 otro ejemplo loco (b=0)
+N <- 1000
+s1 <- 1
+s2 <- 1
+p <- 0.85
+h <- 0.5
+k <- -1
+(ns <- frecuencias(N,s1,s2,p,h,k))
+sum(ns)
+rhot(ns[1],ns[2],ns[3],ns[4]) #Mi función
+(tetrachoric(matrix(c(ns[1],ns[2],ns[3],ns[4]),2,2))) #Función de la librería psych
+chisq.test(matrix(c(ns[1],ns[2],ns[3],ns[4]),2,2))
+
+#Ejemplo 9 ejemplo loco (c=0)
+N <- 1000
+s1 <- 1
+s2 <- 1
+p <- 0.85
+h <- -1.5
+k <- 0.5
+(ns <- frecuencias(N,s1,s2,p,h,k))
+sum(ns)
+rhot(ns[1],ns[2],ns[3],ns[4]) #Mi función
+(tetrachoric(matrix(c(ns[1],ns[2],ns[3],ns[4]),2,2))) #Función de la librería psych
+chisq.test(matrix(c(ns[1],ns[2],ns[3],ns[4]),2,2))
+
+
+#Ejemplo 10 otro ejemplo loco (d=0)
+N <- 1000
+s1 <- 1
+s2 <- 1
+p <- -.85
+h <- 1
+k <- 1
+(ns <- frecuencias(N,s1,s2,p,h,k))
+a=ns[1]
+b=ns[2]
+c=ns[3]
+d=ns[4]
+sum(ns)
+rhot(ns[1],ns[2],ns[3],ns[4]) #Mi función
+(tetrachoric(matrix(c(ns[1],ns[2],ns[3],ns[4]),2,2))) #Función de la librería psych
+chisq.test(matrix(c(ns[1],ns[2],ns[3],ns[4]),2,2))
+
+#Ejemplo 11 otro ejemplo loco (c=d=0)
+N <- 1000
+s1 <- 1
+s2 <- 1
+p <- -0.9
+h <- 0
+k <- 4
 ns <- frecuencias(N,s1,s2,p,h,k)
 ns
 sum(ns)
 rhot(ns[1],ns[2],ns[3],ns[4]) #Mi función
 (tetrachoric(matrix(c(ns[1],ns[2],ns[3],ns[4]),2,2))) #Función de la librería psych
+chisq.test(matrix(c(ns[1],ns[2],ns[3],ns[4]),2,2))
 
+#Ejemplo 12 otro ejemplo loco (b=d=0)
+N <- 1000
+s1 <- 1
+s2 <- 1
+p <- -0.9
+h <- 3.5
+k <- 0
+ns <- frecuencias(N,s1,s2,p,h,k)
+ns
+sum(ns)
+rhot(ns[1],ns[2],ns[3],ns[4]) #Mi función
+(tetrachoric(matrix(c(ns[1],ns[2],ns[3],ns[4]),2,2))) #Función de la librería psych
+chisq.test(matrix(c(ns[1],ns[2],ns[3],ns[4]),2,2))
 
